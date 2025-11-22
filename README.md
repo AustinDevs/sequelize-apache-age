@@ -9,7 +9,13 @@ A Sequelize plugin for Apache AGE (A Graph Extension for PostgreSQL), providing 
 - 🔍 **Cypher Query Builder**: Fluent API for building Cypher queries
 - 🔗 **Relationship Management**: Utilities for defining and managing graph relationships
 - 🛠️ **Utility Functions**: Helper functions for working with graph data
-- 📝 **Type Safe**: Includes JSDoc annotations for better IDE support
+- 📝 **Type Safe**: Full TypeScript definitions included
+- 🎯 **Model Integration**: Sequelize-like models for graph entities
+- 💾 **Transaction Support**: ACID transactions for graph operations
+- ⚡ **Advanced Cypher**: MERGE, OPTIONAL MATCH, UNWIND, aggregations, and more
+- 🚀 **Query Optimization**: Built-in query analysis and optimization tools
+- 📦 **Migration System**: Database migration utilities for graph schemas
+- 📈 **Performance Monitoring**: Track and analyze query performance
 
 ## Installation
 
@@ -214,6 +220,196 @@ Utility functions:
 - `toAGEProperties(properties)`: Convert JS object to AGE properties
 - `fromAGEProperties(properties)`: Parse AGE properties to JS object
 
+### Models
+
+Sequelize-like model definitions for graph entities:
+
+- `GraphModel`: Base class for graph models
+- `ModelRegistry`: Registry for managing models
+
+```javascript
+const age = initApacheAGE(sequelize, { graphName: 'my_graph' });
+
+// Define a vertex model
+const Person = age.models.define('Person', {
+  name: String,
+  age: Number
+}, { type: 'vertex' });
+
+// Create vertices
+const person = await Person.create({ name: 'Alice', age: 30 });
+
+// Query vertices
+const people = await Person.findAll({ where: { age: { $gt: 25 } } });
+const alice = await Person.findOne({ where: { name: 'Alice' } });
+
+// Update vertices
+await Person.update({ age: 31 }, { where: { name: 'Alice' } });
+
+// Count vertices
+const count = await Person.count({ where: { age: { $gte: 30 } } });
+```
+
+### Transactions
+
+Transaction support for atomic graph operations:
+
+- `TransactionManager`: Manages graph transactions
+- `GraphTransaction`: Transaction wrapper for graph operations
+
+```javascript
+const age = initApacheAGE(sequelize, { graphName: 'my_graph' });
+
+// Using withTransaction helper
+await age.transaction.withTransaction(async (tx) => {
+  const alice = await tx.createVertex('Person', { name: 'Alice' });
+  const bob = await tx.createVertex('Person', { name: 'Bob' });
+  await tx.createEdge('KNOWS', alice.id, bob.id, { since: 2020 });
+});
+
+// Manual transaction management
+const tx = await age.transaction.startTransaction();
+try {
+  await tx.executeCypher('CREATE (n:Person {name: "Charlie"}) RETURN n');
+  await tx.commit();
+} catch (error) {
+  await tx.rollback();
+  throw error;
+}
+```
+
+### Advanced Cypher Features
+
+Enhanced query building capabilities:
+
+- `OPTIONAL MATCH`: Optional pattern matching
+- `MERGE`: Create-or-match patterns
+- `UNWIND`: List unwinding
+- `UNION`: Combine queries
+- `DISTINCT`: Unique results
+- Aggregation functions (count, sum, avg, min, max, collect)
+- List operations and comprehensions
+- String functions
+- Path functions
+
+```javascript
+// MERGE and OPTIONAL MATCH
+const query = CypherFunctions.queryBuilder()
+  .merge('(p:Person {name: "Alice"})')
+  .optionalMatch('(p)-[r:KNOWS]->(friend)')
+  .return('p, collect(friend) as friends')
+  .build();
+
+// UNWIND for batch operations
+const query2 = CypherFunctions.queryBuilder()
+  .unwind('[1, 2, 3]', 'num')
+  .create('(n:Number {value: num})')
+  .return('n')
+  .build();
+
+// Aggregation
+const query3 = CypherFunctions.queryBuilder()
+  .match('(p:Person)')
+  .return(`${CypherFunctions.aggregation.count('p')} as total`)
+  .build();
+
+// Path operations
+const shortestPath = CypherFunctions.pathFunctions.shortestPath(
+  '(a:Person)-[*]-(b:Person)'
+);
+```
+
+### Query Optimization
+
+Tools for analyzing and optimizing queries:
+
+- `QueryAnalyzer`: Analyze queries for optimization opportunities
+- `QueryOptimizer`: Optimize query patterns
+- `IndexManager`: Manage graph indexes
+- `QueryCache`: Cache query results
+- `PerformanceMonitor`: Monitor query performance
+
+```javascript
+const age = initApacheAGE(sequelize, { graphName: 'my_graph' });
+
+// Analyze a query
+const analysis = age.optimization.analyzer.analyze(cypherQuery);
+console.log(analysis.suggestions);
+
+// Suggest indexes based on query patterns
+const queries = [/* array of queries */];
+const suggestions = age.optimization.analyzer.suggestIndexes(queries);
+
+// Create an index
+await age.optimization.indexManager.createIndex('Person', 'name');
+
+// Monitor query performance
+age.optimization.monitor.record(query, duration);
+const slowQueries = age.optimization.monitor.getSlowestQueries(10);
+```
+
+### Migrations
+
+Database migration utilities for graph schemas:
+
+- `Migration`: Define schema changes
+- `MigrationManager`: Manage migration execution
+- `SchemaBuilder`: Fluent schema definition API
+
+```javascript
+const age = initApacheAGE(sequelize, { graphName: 'my_graph' });
+
+// Create a migration
+const migration = age.migrations.create('create_person_schema')
+  .createVertexLabel('Person')
+  .createVertexLabel('Company')
+  .createEdgeLabel('WORKS_AT')
+  .rawCypher('CREATE (n:Person {name: "Admin"}) RETURN n');
+
+// Run pending migrations
+await age.migrations.runPending();
+
+// Rollback last migration
+await age.migrations.rollback();
+
+// Check migration status
+const status = await age.migrations.status();
+
+// Schema builder
+await age.schema.createSchema((schema) => {
+  schema
+    .vertex('Person')
+    .vertex('Company')
+    .edge('WORKS_AT')
+    .edge('KNOWS');
+});
+```
+
+### TypeScript Support
+
+Full TypeScript definitions included:
+
+```typescript
+import { initApacheAGE, GraphModel, CypherFunctions } from 'sequelize-apache-age';
+import { Sequelize } from 'sequelize';
+
+const sequelize = new Sequelize(/* ... */);
+const age = initApacheAGE(sequelize, { graphName: 'my_graph' });
+
+// Type-safe model operations
+const Person: GraphModel = age.models.define('Person', {
+  name: String,
+  age: Number
+});
+
+// Type-safe query building
+const query: string = CypherFunctions.queryBuilder()
+  .match('(p:Person)')
+  .where('p.age > 25')
+  .return('p')
+  .build();
+```
+
 ## Examples
 
 See the [examples](./examples) directory for complete usage examples.
@@ -284,12 +480,12 @@ For issues and questions:
 
 ## Roadmap
 
-- [ ] Full Sequelize model integration
-- [ ] Transaction support
-- [ ] Advanced Cypher features
-- [ ] Query optimization helpers
-- [ ] Migration utilities
+- [x] Full Sequelize model integration ✅
+- [x] Transaction support ✅
+- [x] Advanced Cypher features ✅
+- [x] Query optimization helpers ✅
+- [x] Migration utilities ✅
+- [x] TypeScript definitions ✅
 - [ ] GraphQL integration
-- [ ] TypeScript definitions
 - [ ] Comprehensive documentation
 - [ ] Performance benchmarks

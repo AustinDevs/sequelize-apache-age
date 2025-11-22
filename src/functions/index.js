@@ -12,15 +12,21 @@ class CypherQueryBuilder {
   constructor() {
     this.queryParts = {
       match: [],
+      optionalMatch: [],
       where: [],
       create: [],
+      merge: [],
+      unwind: [],
       set: [],
       delete: [],
+      remove: [],
       return: [],
       with: [],
       orderBy: [],
       limit: null,
-      skip: null
+      skip: null,
+      union: [],
+      distinct: false
     };
   }
 
@@ -125,53 +131,165 @@ class CypherQueryBuilder {
   }
 
   /**
+   * Add OPTIONAL MATCH clause
+   * @param {string} pattern - Pattern to optionally match
+   * @returns {CypherQueryBuilder} this
+   */
+  optionalMatch(pattern) {
+    this.queryParts.optionalMatch.push(pattern);
+    return this;
+  }
+
+  /**
+   * Add MERGE clause (create or match)
+   * @param {string} pattern - Pattern to merge
+   * @returns {CypherQueryBuilder} this
+   */
+  merge(pattern) {
+    this.queryParts.merge.push(pattern);
+    return this;
+  }
+
+  /**
+   * Add UNWIND clause
+   * @param {string} expression - Expression to unwind
+   * @param {string} alias - Alias for unwound items
+   * @returns {CypherQueryBuilder} this
+   */
+  unwind(expression, alias) {
+    this.queryParts.unwind.push(`${expression} AS ${alias}`);
+    return this;
+  }
+
+  /**
+   * Add REMOVE clause
+   * @param {string} target - Property or label to remove
+   * @returns {CypherQueryBuilder} this
+   */
+  remove(target) {
+    this.queryParts.remove.push(target);
+    return this;
+  }
+
+  /**
+   * Add UNION clause
+   * @param {CypherQueryBuilder|string} query - Query to union
+   * @param {boolean} all - Use UNION ALL instead of UNION
+   * @returns {CypherQueryBuilder} this
+   */
+  union(query, all = false) {
+    const queryString = typeof query === 'string' ? query : query.build();
+    this.queryParts.union.push({ query: queryString, all });
+    return this;
+  }
+
+  /**
+   * Make RETURN distinct
+   * @returns {CypherQueryBuilder} this
+   */
+  distinct() {
+    this.queryParts.distinct = true;
+    return this;
+  }
+
+  /**
    * Build the complete Cypher query
    * @returns {string} Complete Cypher query
    */
   build() {
     const parts = [];
 
+    // UNWIND comes first
+    if (this.queryParts.unwind.length > 0) {
+      this.queryParts.unwind.forEach(unwind => {
+        parts.push(`UNWIND ${unwind}`);
+      });
+    }
+
+    // MATCH
     if (this.queryParts.match.length > 0) {
       parts.push(`MATCH ${this.queryParts.match.join(', ')}`);
     }
 
+    // OPTIONAL MATCH
+    if (this.queryParts.optionalMatch.length > 0) {
+      this.queryParts.optionalMatch.forEach(pattern => {
+        parts.push(`OPTIONAL MATCH ${pattern}`);
+      });
+    }
+
+    // MERGE
+    if (this.queryParts.merge.length > 0) {
+      this.queryParts.merge.forEach(pattern => {
+        parts.push(`MERGE ${pattern}`);
+      });
+    }
+
+    // CREATE
     if (this.queryParts.create.length > 0) {
       parts.push(`CREATE ${this.queryParts.create.join(', ')}`);
     }
 
+    // WHERE
     if (this.queryParts.where.length > 0) {
       parts.push(`WHERE ${this.queryParts.where.join(' AND ')}`);
     }
 
+    // WITH
     if (this.queryParts.with.length > 0) {
       parts.push(`WITH ${this.queryParts.with.join(', ')}`);
     }
 
+    // SET
     if (this.queryParts.set.length > 0) {
       parts.push(`SET ${this.queryParts.set.join(', ')}`);
     }
 
+    // REMOVE
+    if (this.queryParts.remove.length > 0) {
+      parts.push(`REMOVE ${this.queryParts.remove.join(', ')}`);
+    }
+
+    // DELETE
     if (this.queryParts.delete.length > 0) {
       parts.push(`DELETE ${this.queryParts.delete.join(', ')}`);
     }
 
+    // RETURN
     if (this.queryParts.return.length > 0) {
-      parts.push(`RETURN ${this.queryParts.return.join(', ')}`);
+      const returnClause = this.queryParts.distinct
+        ? `RETURN DISTINCT ${this.queryParts.return.join(', ')}`
+        : `RETURN ${this.queryParts.return.join(', ')}`;
+      parts.push(returnClause);
     }
 
+    // ORDER BY
     if (this.queryParts.orderBy.length > 0) {
       parts.push(`ORDER BY ${this.queryParts.orderBy.join(', ')}`);
     }
 
+    // SKIP
     if (this.queryParts.skip !== null) {
       parts.push(`SKIP ${this.queryParts.skip}`);
     }
 
+    // LIMIT
     if (this.queryParts.limit !== null) {
       parts.push(`LIMIT ${this.queryParts.limit}`);
     }
 
-    return parts.join(' ');
+    const query = parts.join(' ');
+
+    // UNION
+    if (this.queryParts.union.length > 0) {
+      const unions = this.queryParts.union.map(u => {
+        const keyword = u.all ? 'UNION ALL' : 'UNION';
+        return `${keyword} ${u.query}`;
+      }).join(' ');
+      return `${query} ${unions}`;
+    }
+
+    return query;
   }
 
   /**
@@ -274,6 +392,241 @@ const CypherFunctions = {
    */
   path(...elements) {
     return elements.join('');
+  },
+
+  /**
+   * Aggregation functions
+   */
+  aggregation: {
+    /**
+     * COUNT aggregation
+     * @param {string} expression - Expression to count
+     * @returns {string} COUNT expression
+     */
+    count(expression = '*') {
+      return `count(${expression})`;
+    },
+
+    /**
+     * SUM aggregation
+     * @param {string} expression - Expression to sum
+     * @returns {string} SUM expression
+     */
+    sum(expression) {
+      return `sum(${expression})`;
+    },
+
+    /**
+     * AVG aggregation
+     * @param {string} expression - Expression to average
+     * @returns {string} AVG expression
+     */
+    avg(expression) {
+      return `avg(${expression})`;
+    },
+
+    /**
+     * MIN aggregation
+     * @param {string} expression - Expression to find minimum
+     * @returns {string} MIN expression
+     */
+    min(expression) {
+      return `min(${expression})`;
+    },
+
+    /**
+     * MAX aggregation
+     * @param {string} expression - Expression to find maximum
+     * @returns {string} MAX expression
+     */
+    max(expression) {
+      return `max(${expression})`;
+    },
+
+    /**
+     * COLLECT aggregation
+     * @param {string} expression - Expression to collect
+     * @returns {string} COLLECT expression
+     */
+    collect(expression) {
+      return `collect(${expression})`;
+    }
+  },
+
+  /**
+   * List operations
+   */
+  list: {
+    /**
+     * Create a list
+     * @param {Array} items - List items
+     * @returns {string} List expression
+     */
+    create(items) {
+      return `[${items.join(', ')}]`;
+    },
+
+    /**
+     * List comprehension
+     * @param {string} variable - Variable name
+     * @param {string} list - List expression
+     * @param {string} filter - Filter expression
+     * @param {string} map - Map expression
+     * @returns {string} List comprehension
+     */
+    comprehension(variable, list, filter = null, map = null) {
+      let expr = `${variable} IN ${list}`;
+      if (filter) expr += ` WHERE ${filter}`;
+      if (map) expr += ` | ${map}`;
+      return `[${expr}]`;
+    },
+
+    /**
+     * Range expression
+     * @param {number} start - Start value
+     * @param {number} end - End value
+     * @param {number} step - Step value
+     * @returns {string} Range expression
+     */
+    range(start, end, step = 1) {
+      return step === 1 ? `range(${start}, ${end})` : `range(${start}, ${end}, ${step})`;
+    }
+  },
+
+  /**
+   * String functions
+   */
+  string: {
+    /**
+     * Convert to lowercase
+     * @param {string} expression - Expression
+     * @returns {string} toLower expression
+     */
+    toLower(expression) {
+      return `toLower(${expression})`;
+    },
+
+    /**
+     * Convert to uppercase
+     * @param {string} expression - Expression
+     * @returns {string} toUpper expression
+     */
+    toUpper(expression) {
+      return `toUpper(${expression})`;
+    },
+
+    /**
+     * Trim whitespace
+     * @param {string} expression - Expression
+     * @returns {string} trim expression
+     */
+    trim(expression) {
+      return `trim(${expression})`;
+    },
+
+    /**
+     * Substring
+     * @param {string} expression - Expression
+     * @param {number} start - Start index
+     * @param {number} length - Length
+     * @returns {string} substring expression
+     */
+    substring(expression, start, length = null) {
+      return length !== null
+        ? `substring(${expression}, ${start}, ${length})`
+        : `substring(${expression}, ${start})`;
+    },
+
+    /**
+     * String concatenation
+     * @param {Array<string>} expressions - Expressions to concatenate
+     * @returns {string} Concatenation expression
+     */
+    concat(...expressions) {
+      return expressions.join(' + ');
+    }
+  },
+
+  /**
+   * Path functions
+   */
+  pathFunctions: {
+    /**
+     * Get path length
+     * @param {string} pathVar - Path variable
+     * @returns {string} length expression
+     */
+    length(pathVar) {
+      return `length(${pathVar})`;
+    },
+
+    /**
+     * Get nodes in path
+     * @param {string} pathVar - Path variable
+     * @returns {string} nodes expression
+     */
+    nodes(pathVar) {
+      return `nodes(${pathVar})`;
+    },
+
+    /**
+     * Get relationships in path
+     * @param {string} pathVar - Path variable
+     * @returns {string} relationships expression
+     */
+    relationships(pathVar) {
+      return `relationships(${pathVar})`;
+    },
+
+    /**
+     * Shortest path
+     * @param {string} pattern - Path pattern
+     * @returns {string} shortestPath expression
+     */
+    shortestPath(pattern) {
+      return `shortestPath(${pattern})`;
+    },
+
+    /**
+     * All shortest paths
+     * @param {string} pattern - Path pattern
+     * @returns {string} allShortestPaths expression
+     */
+    allShortestPaths(pattern) {
+      return `allShortestPaths(${pattern})`;
+    }
+  },
+
+  /**
+   * Type checking functions
+   */
+  type: {
+    /**
+     * Get type of value
+     * @param {string} expression - Expression
+     * @returns {string} type expression
+     */
+    type(expression) {
+      return `type(${expression})`;
+    },
+
+    /**
+     * Get labels of node
+     * @param {string} nodeVar - Node variable
+     * @returns {string} labels expression
+     */
+    labels(nodeVar) {
+      return `labels(${nodeVar})`;
+    },
+
+    /**
+     * Get properties
+     * @param {string} expression - Expression
+     * @returns {string} properties expression
+     */
+    properties(expression) {
+      return `properties(${expression})`;
+    }
   }
 };
 
