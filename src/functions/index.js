@@ -210,7 +210,8 @@ const CypherFunctions = {
    * @returns {string} Escaped value
    */
   escapeString(value) {
-    return `'${value.replace(/'/g, '\\\'')}'`;
+    // Escape backslashes first, then single quotes
+    return `'${value.replace(/\\/g, '\\\\').replace(/'/g, '\\\'')}'`;
   },
 
   /**
@@ -222,7 +223,7 @@ const CypherFunctions = {
     const props = Object.entries(properties)
       .map(([key, value]) => {
         const formattedValue = typeof value === 'string' 
-          ? `"${value.replace(/"/g, '\\"')}"` // Use double quotes for strings
+          ? `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` // Escape backslashes then double quotes
           : JSON.stringify(value);
         return `${key}: ${formattedValue}`;
       })
