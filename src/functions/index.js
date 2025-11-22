@@ -222,7 +222,7 @@ const CypherFunctions = {
     const props = Object.entries(properties)
       .map(([key, value]) => {
         const formattedValue = typeof value === 'string' 
-          ? this.escapeString(value)
+          ? `"${value.replace(/"/g, '\\"')}"` // Use double quotes for strings
           : JSON.stringify(value);
         return `${key}: ${formattedValue}`;
       })

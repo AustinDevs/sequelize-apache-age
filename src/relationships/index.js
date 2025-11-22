@@ -145,7 +145,17 @@ const Relationships = {
     const toPattern = `(${toVar}:${toLabel})`;
     
     const relationship = new Relationship(relationshipType, options);
-    const relPattern = relationship.toCypherPattern(fromVar, toVar, relVar);
+    const direction = relationship.options.direction;
+    
+    // Build relationship pattern with labels
+    let relPattern;
+    if (direction === 'incoming') {
+      relPattern = `${fromPattern}<-[${relVar}:${relationshipType}]-${toPattern}`;
+    } else if (direction === 'both') {
+      relPattern = `${fromPattern}-[${relVar}:${relationshipType}]-${toPattern}`;
+    } else {
+      relPattern = `${fromPattern}-[${relVar}:${relationshipType}]->${toPattern}`;
+    }
     
     return `MATCH ${relPattern} RETURN ${fromVar}, ${relVar}, ${toVar}`;
   }
