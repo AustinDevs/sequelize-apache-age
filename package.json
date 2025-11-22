@@ -1,0 +1,40 @@
+{
+  "name": "sequelize-apache-age",
+  "version": "0.1.0",
+  "description": "Sequelize plugin for Apache AGE - adds support for cypher functions, graph objects, and relationships",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint src/ test/",
+    "build": "node scripts/build.js"
+  },
+  "keywords": [
+    "sequelize",
+    "apache-age",
+    "graph-database",
+    "cypher",
+    "postgres",
+    "postgresql",
+    "sequelize-plugin"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "sequelize": "^6.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "sequelize": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AustinDevs/sequelize-apache-age.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AustinDevs/sequelize-apache-age/issues"
+  }
+}
