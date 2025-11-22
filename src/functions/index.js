@@ -210,7 +210,7 @@ const CypherFunctions = {
    * @returns {string} Escaped value
    */
   escapeString(value) {
-    return `'${value.replace(/'/g, "\\'")}'`;
+    return `'${value.replace(/'/g, '\\\'')}'`;
   },
 
   /**

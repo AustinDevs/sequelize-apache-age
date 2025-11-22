@@ -192,7 +192,7 @@ const GraphUtils = {
    * @returns {string} Unique variable name
    */
   generateVariableName(prefix = 'var') {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 };
 
