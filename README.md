@@ -350,11 +350,46 @@ const slowQueries = age.optimization.monitor.getSlowestQueries(10);
 
 ### Migrations
 
-Database migration utilities for graph schemas:
+Database migration utilities for graph schemas (CLI and programmatic):
 
-- `Migration`: Define schema changes
-- `MigrationManager`: Manage migration execution
-- `SchemaBuilder`: Fluent schema definition API
+#### CLI Usage (Recommended)
+
+Similar to `sequelize-cli`, manage migrations from the command line:
+
+```bash
+# Initialize migration system
+npx age-migrate init
+
+# Generate a new migration
+npx age-migrate generate --name create-user-system
+
+# Run all pending migrations
+npx age-migrate up
+
+# Rollback last migration
+npx age-migrate down
+
+# Check migration status
+npx age-migrate status
+```
+
+Migration file example:
+```javascript
+// migrations/20240101120000-create-user-system.js
+module.exports = {
+  up: async (migrations) => {
+    return migrations.create('20240101120000-create-user-system')
+      .createVertexLabel('User')
+      .createVertexLabel('Profile')
+      .createEdgeLabel('HAS_PROFILE');
+  },
+  down: async (migration) => {
+    // Automatic rollback
+  }
+};
+```
+
+#### Programmatic Usage
 
 ```javascript
 const age = initApacheAGE(sequelize, { graphName: 'my_graph' });

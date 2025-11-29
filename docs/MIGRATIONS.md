@@ -6,6 +6,7 @@ This guide covers the migration system in `sequelize-apache-age`, which provides
 
 - [Overview](#overview)
 - [Getting Started](#getting-started)
+- [CLI Usage](#cli-usage)
 - [Creating Migrations](#creating-migrations)
 - [Running Migrations](#running-migrations)
 - [Rolling Back Migrations](#rolling-back-migrations)
@@ -66,6 +67,200 @@ const migration = migrations.create('001_initial_schema')
 
 // Run the migration
 await migrations.runPending();
+```
+
+## CLI Usage
+
+The recommended way to use migrations is through the CLI, similar to `sequelize-cli`. This provides a familiar workflow for Sequelize users.
+
+### Installation
+
+After installing `sequelize-apache-age`, the `age-migrate` command will be available:
+
+```bash
+npm install sequelize-apache-age
+```
+
+### Initialize Migration System
+
+Set up the migration system in your project:
+
+```bash
+npx age-migrate init
+```
+
+This creates:
+- `age-config.js` - Database configuration file
+- `migrations/` - Directory for migration files
+
+### Configure Database Connection
+
+Edit `age-config.js` with your database credentials:
+
+```javascript
+module.exports = {
+  // Database connection
+  database: process.env.DB_NAME || 'mydb',
+  username: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'password',
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 5432,
+
+  // Graph configuration
+  graphName: process.env.GRAPH_NAME || 'my_graph',
+
+  // Sequelize options
+  options: {
+    logging: false
+  }
+};
+```
+
+### Generate Migration Files
+
+Create a new migration file:
+
+```bash
+npx age-migrate generate --name create-user-system
+```
+
+This creates a timestamped migration file in `migrations/`:
+
+```
+migrations/
+└── 20240101120000-create-user-system.js
+```
+
+### Edit Migration File
+
+Open the generated file and add your migration operations:
+
+```javascript
+'use strict';
+
+module.exports = {
+  up: async (migrations) => {
+    return migrations.create('20240101120000-create-user-system')
+      .createVertexLabel('User')
+      .createVertexLabel('Profile')
+      .createEdgeLabel('HAS_PROFILE')
+      .rawCypher(
+        'CREATE (r:Role {name: "admin"}) RETURN r',
+        'MATCH (r:Role {name: "admin"}) DELETE r'
+      );
+  },
+
+  down: async (migration) => {
+    // Automatic rollback
+  }
+};
+```
+
+### Run Migrations
+
+Execute all pending migrations:
+
+```bash
+npx age-migrate up
+```
+
+Output:
+```
+Connecting to database...
+✓ Connected to database
+Found 2 migration file(s)
+
+→ Running 20240101120000-create-user-system.js...
+✓ 20240101120000-create-user-system.js
+
+✓ Successfully executed 1 migration(s)
+```
+
+### Check Migration Status
+
+View which migrations have been executed:
+
+```bash
+npx age-migrate status
+```
+
+Output:
+```
+Migration Status (Graph: my_graph)
+────────────────────────────────────────────────────────
+✓ up   20240101120000-create-user-system
+✗ down 20240102130000-add-social-features
+────────────────────────────────────────────────────────
+Total: 2 | Executed: 1 | Pending: 1
+```
+
+### Rollback Migrations
+
+Revert the last executed migration:
+
+```bash
+npx age-migrate down
+```
+
+### CLI Commands Reference
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `init` | Initialize migration system | `npx age-migrate init` |
+| `generate --name <name>` | Generate new migration file | `npx age-migrate generate --name add-users` |
+| `up` | Run all pending migrations | `npx age-migrate up` |
+| `down` | Rollback last migration | `npx age-migrate down` |
+| `status` | Show migration status | `npx age-migrate status` |
+| `help` | Show help information | `npx age-migrate help` |
+
+### Environment Variables
+
+Configure migrations using environment variables:
+
+```bash
+# Set environment variables
+export DB_NAME=mydb
+export DB_USER=postgres
+export DB_PASSWORD=secret
+export DB_HOST=localhost
+export DB_PORT=5432
+export GRAPH_NAME=my_graph
+
+# Run migrations
+npx age-migrate up
+```
+
+### CI/CD Integration
+
+Use migrations in your CI/CD pipeline:
+
+```yaml
+# .github/workflows/deploy.yml
+- name: Run migrations
+  env:
+    DB_NAME: ${{ secrets.DB_NAME }}
+    DB_USER: ${{ secrets.DB_USER }}
+    DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    DB_HOST: ${{ secrets.DB_HOST }}
+    GRAPH_NAME: production_graph
+  run: npx age-migrate up
+```
+
+### Programmatic Usage (Alternative)
+
+If you prefer programmatic control instead of the CLI:
+
+```javascript
+const { Sequelize } = require('sequelize');
+const { initApacheAGE } = require('sequelize-apache-age');
+
+const sequelize = new Sequelize(/* config */);
+const age = initApacheAGE(sequelize, { graphName: 'my_graph' });
+
+// Load and run migration
+const migration = require('./migrations/20240101-create-users.js');
+const m = await migration.up(age.migrations);
+await m.up();
 ```
 
 ## Creating Migrations
