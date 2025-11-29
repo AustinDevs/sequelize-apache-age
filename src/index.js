@@ -12,7 +12,6 @@ const { GraphUtils } = require('./utils');
 const { ModelRegistry, GraphModel } = require('./models');
 const { TransactionManager, GraphTransaction } = require('./transaction');
 const { QueryAnalyzer, QueryOptimizer, IndexManager, QueryCache, PerformanceMonitor } = require('./optimization');
-const { Migration, MigrationManager, SchemaBuilder } = require('./migrations');
 
 /**
  * Initialize the Apache AGE plugin for Sequelize
@@ -38,12 +37,6 @@ function initApacheAGE(sequelize, options = {}) {
   const queryCache = new QueryCache(config.cacheOptions);
   const performanceMonitor = new PerformanceMonitor();
 
-  // Initialize migration manager
-  const migrationManager = new MigrationManager(sequelize, config.graphName);
-
-  // Initialize schema builder
-  const schemaBuilder = new SchemaBuilder(sequelize, config.graphName);
-
   // Initialize AGE extension if needed
   if (config.autoCreateGraph) {
     // This will be implemented to run:
@@ -68,8 +61,6 @@ function initApacheAGE(sequelize, options = {}) {
       cache: queryCache,
       monitor: performanceMonitor
     },
-    migrations: migrationManager,
-    schema: schemaBuilder,
     
     /**
      * Execute a cypher query
@@ -122,8 +113,5 @@ module.exports = {
   QueryOptimizer,
   IndexManager,
   QueryCache,
-  PerformanceMonitor,
-  Migration,
-  MigrationManager,
-  SchemaBuilder
+  PerformanceMonitor
 };

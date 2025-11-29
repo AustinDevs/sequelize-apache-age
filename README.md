@@ -14,7 +14,7 @@ A Sequelize plugin for Apache AGE (A Graph Extension for PostgreSQL), providing 
 - 💾 **Transaction Support**: ACID transactions for graph operations
 - ⚡ **Advanced Cypher**: MERGE, OPTIONAL MATCH, UNWIND, aggregations, and more
 - 🚀 **Query Optimization**: Built-in query analysis and optimization tools
-- 📦 **Migration System**: Database migration utilities for graph schemas
+- 📦 **Migration Examples**: Use with sequelize-cli for schema migrations
 - 📈 **Performance Monitoring**: Track and analyze query performance
 
 ## Installation
@@ -348,79 +348,73 @@ age.optimization.monitor.record(query, duration);
 const slowQueries = age.optimization.monitor.getSlowestQueries(10);
 ```
 
-### Migrations
+### Migrations with Sequelize CLI
 
-Database migration utilities for graph schemas (CLI and programmatic):
-
-#### CLI Usage (Recommended)
-
-Similar to `sequelize-cli`, manage migrations from the command line:
+Use Apache AGE functions within standard `sequelize-cli` migrations:
 
 ```bash
-# Initialize migration system
-npx age-migrate init
+# Install sequelize-cli
+npm install --save-dev sequelize-cli
 
-# Generate a new migration
-npx age-migrate generate --name create-user-system
+# Initialize Sequelize
+npx sequelize-cli init
 
-# Run all pending migrations
-npx age-migrate up
+# Generate a migration
+npx sequelize-cli migration:generate --name create-graph-and-labels
 
-# Rollback last migration
-npx age-migrate down
+# Run migrations
+npx sequelize-cli db:migrate
 
-# Check migration status
-npx age-migrate status
+# Rollback
+npx sequelize-cli db:migrate:undo
 ```
 
-Migration file example:
+Example migration file:
 ```javascript
-// migrations/20240101120000-create-user-system.js
+'use strict';
+
+const { GraphUtils } = require('sequelize-apache-age');
+
 module.exports = {
-  up: async (migrations) => {
-    return migrations.create('20240101120000-create-user-system')
-      .createVertexLabel('User')
-      .createVertexLabel('Profile')
-      .createEdgeLabel('HAS_PROFILE');
+  async up(queryInterface, Sequelize) {
+    // Create AGE extension and graph
+    await queryInterface.sequelize.query('CREATE EXTENSION IF NOT EXISTS age;');
+    await queryInterface.sequelize.query("LOAD 'age';");
+    await queryInterface.sequelize.query("SELECT create_graph('my_graph');");
+
+    // Create vertex labels
+    await queryInterface.sequelize.query(
+      "SELECT * FROM ag_catalog.create_vlabel('my_graph', 'User');"
+    );
+
+    await queryInterface.sequelize.query(
+      "SELECT * FROM ag_catalog.create_vlabel('my_graph', 'Profile');"
+    );
+
+    // Create edge labels
+    await queryInterface.sequelize.query(
+      "SELECT * FROM ag_catalog.create_elabel('my_graph', 'HAS_PROFILE');"
+    );
+
+    // Insert data using Cypher
+    const createAdmin = GraphUtils.buildAGEQuery(
+      'my_graph',
+      `CREATE (u:User {name: 'admin', email: 'admin@example.com'})
+       CREATE (p:Profile {bio: 'Administrator'})
+       CREATE (u)-[:HAS_PROFILE]->(p)
+       RETURN u, p`
+    );
+    await queryInterface.sequelize.query(createAdmin);
   },
-  down: async (migration) => {
-    // Automatic rollback
+
+  async down(queryInterface, Sequelize) {
+    // Drop the graph (cascades to all labels and data)
+    await queryInterface.sequelize.query("SELECT drop_graph('my_graph', true);");
   }
 };
 ```
 
-#### Programmatic Usage
-
-```javascript
-const age = initApacheAGE(sequelize, { graphName: 'my_graph' });
-
-// Create a migration
-const migration = age.migrations.create('create_person_schema')
-  .createVertexLabel('Person')
-  .createVertexLabel('Company')
-  .createEdgeLabel('WORKS_AT')
-  .rawCypher('CREATE (n:Person {name: "Admin"}) RETURN n');
-
-// Run pending migrations
-await age.migrations.runPending();
-
-// Rollback last migration
-await age.migrations.rollback();
-
-// Check migration status
-const status = await age.migrations.status();
-
-// Schema builder
-await age.schema.createSchema((schema) => {
-  schema
-    .vertex('Person')
-    .vertex('Company')
-    .edge('WORKS_AT')
-    .edge('KNOWS');
-});
-```
-
-📖 **[View detailed migration documentation](./docs/MIGRATIONS.md)**
+📖 **[View migration examples](./examples/sequelize-migrations/)**
 
 ### TypeScript Support
 
@@ -486,13 +480,11 @@ sequelize-apache-age/
 │   ├── utils/             # Utility functions
 │   ├── models/            # Sequelize model integration
 │   ├── transaction/       # Transaction support
-│   ├── optimization/      # Query optimization tools
-│   └── migrations/        # Migration system
-├── docs/                  # Documentation
-│   └── MIGRATIONS.md      # Migration guide
+│   └── optimization/      # Query optimization tools
+├── examples/              # Usage examples
+│   └── sequelize-migrations/ # Migration examples
 ├── lib/                   # Built files (generated)
 ├── test/                  # Test files
-├── examples/              # Usage examples
 ├── index.d.ts             # TypeScript definitions
 └── scripts/               # Build scripts
 ```
@@ -528,7 +520,7 @@ For issues and questions:
 - [x] Transaction support ✅
 - [x] Advanced Cypher features ✅
 - [x] Query optimization helpers ✅
-- [x] Migration utilities ✅
+- [x] Sequelize CLI migration examples ✅
 - [x] TypeScript definitions ✅
 - [ ] GraphQL integration
 - [ ] Comprehensive documentation
