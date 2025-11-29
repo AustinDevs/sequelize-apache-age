@@ -385,6 +385,8 @@ await age.schema.createSchema((schema) => {
 });
 ```
 
+📖 **[View detailed migration documentation](./docs/MIGRATIONS.md)**
+
 ### TypeScript Support
 
 Full TypeScript definitions included:
@@ -446,10 +448,17 @@ sequelize-apache-age/
 │   ├── types/             # AGE data types
 │   ├── functions/         # Cypher functions and query builder
 │   ├── relationships/     # Relationship utilities
-│   └── utils/             # Utility functions
+│   ├── utils/             # Utility functions
+│   ├── models/            # Sequelize model integration
+│   ├── transaction/       # Transaction support
+│   ├── optimization/      # Query optimization tools
+│   └── migrations/        # Migration system
+├── docs/                  # Documentation
+│   └── MIGRATIONS.md      # Migration guide
 ├── lib/                   # Built files (generated)
 ├── test/                  # Test files
 ├── examples/              # Usage examples
+├── index.d.ts             # TypeScript definitions
 └── scripts/               # Build scripts
 ```
 
