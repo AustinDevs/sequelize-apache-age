@@ -9,6 +9,10 @@ const { DataTypes } = require('./types');
 const { CypherFunctions } = require('./functions');
 const { Relationships } = require('./relationships');
 const { GraphUtils } = require('./utils');
+const { ModelRegistry, GraphModel } = require('./models');
+const { TransactionManager, GraphTransaction } = require('./transaction');
+const { QueryAnalyzer, QueryOptimizer, IndexManager, QueryCache, PerformanceMonitor } = require('./optimization');
+const { Migration, MigrationManager, SchemaBuilder } = require('./migrations');
 
 /**
  * Initialize the Apache AGE plugin for Sequelize
@@ -22,6 +26,23 @@ function initApacheAGE(sequelize, options = {}) {
     autoCreateGraph: options.autoCreateGraph !== false,
     ...options
   };
+
+  // Initialize model registry
+  const modelRegistry = new ModelRegistry(sequelize, config.graphName);
+
+  // Initialize transaction manager
+  const transactionManager = new TransactionManager(sequelize, config.graphName);
+
+  // Initialize optimization tools
+  const indexManager = new IndexManager(sequelize, config.graphName);
+  const queryCache = new QueryCache(config.cacheOptions);
+  const performanceMonitor = new PerformanceMonitor();
+
+  // Initialize migration manager
+  const migrationManager = new MigrationManager(sequelize, config.graphName);
+
+  // Initialize schema builder
+  const schemaBuilder = new SchemaBuilder(sequelize, config.graphName);
 
   // Initialize AGE extension if needed
   if (config.autoCreateGraph) {
@@ -38,6 +59,17 @@ function initApacheAGE(sequelize, options = {}) {
     CypherFunctions,
     Relationships,
     GraphUtils,
+    models: modelRegistry,
+    transaction: transactionManager,
+    optimization: {
+      analyzer: QueryAnalyzer,
+      optimizer: QueryOptimizer,
+      indexManager,
+      cache: queryCache,
+      monitor: performanceMonitor
+    },
+    migrations: migrationManager,
+    schema: schemaBuilder,
     
     /**
      * Execute a cypher query
@@ -81,5 +113,17 @@ module.exports = {
   DataTypes,
   CypherFunctions,
   Relationships,
-  GraphUtils
+  GraphUtils,
+  GraphModel,
+  ModelRegistry,
+  TransactionManager,
+  GraphTransaction,
+  QueryAnalyzer,
+  QueryOptimizer,
+  IndexManager,
+  QueryCache,
+  PerformanceMonitor,
+  Migration,
+  MigrationManager,
+  SchemaBuilder
 };

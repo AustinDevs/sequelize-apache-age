@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Sequelize plugin for Apache AGE - adds support for cypher functions, graph objects, and relationships",
   "main": "lib/index.js",
+  "types": "index.d.ts",
   "scripts": {
     "test": "jest",
     "lint": "eslint src/ test/",
